@@ -1,0 +1,115 @@
+---
+title: "Decision Theory Assignment 1"
+author: "Mikael Montén"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Question 1
+
+A bank official is concerned about the rate at which the bank’s tellers provide service
+for their customers. He feels that all of the tellers work at about the same speed, which
+is either 30, 40 or 50 customers per hour. Furthermore, 40 customers per hour is twice
+as likely as each of the two other values, which are assumed to be equally likely. In
+order to obtain more information, the official observes all five tellers for a two-hour
+period, noting that 380 customers are served during that period.
+Show that the posterior probabilities for the three possible speeds are approximately
+0.000045, 0.99996 and 0.00000012 respectively.
+
+```{r}
+posterior_probability <- function(lambda,prior,t,n,c){
+  
+  # lambda: vector with intensities of the process
+  # prior: vector with prior probabilities of intensities
+  # t: amount of hours observed
+  # n: amount of tellers observed
+  # c: amount of occurences
+
+  
+  # proportional posterior probability (meeting #2, slide 18)
+  # log to deal with the high amount of occurences
+  log_post_propto <- c*log(lambda)-t*n*lambda+log(prior)
+  
+  # log sum exp trick to deal with overflow when calculating normalizing constant
+  maximum <- max(log_post_propto)
+  norm_const <- maximum+log(sum(sapply(log_post_propto, function(x) exp(x-maximum))))
+  
+  # normalized log proportional posterior 
+  log_post <- log_post_propto-norm_const
+  
+  # posterior probability
+  post <- exp(log_post)
+  
+  return(post)
+}
+```
+
+\pagebreak
+The function takes input of intensities, their probabilities, observed tellers and hours and amount of customer occurences in that time. To calculate posterior probabilities, the following formulas are used;
+
+$$\text{1. Proportional posterior probability}:\lambda_i^{c} e^{-t \cdot n \cdot \lambda} \cdot P(\lambda_i)$$
+$$\text{2. Log proportional posterior probability}: \tilde{x}_i = c \cdot \log{\lambda_i} -t \cdot n \cdot \lambda + \log{P(\lambda_i)}$$
+$$\text{3. Maximum function of posterior probability}: x^*=\max \{\tilde{x}_i\}$$
+
+$$\text{4. Normalizing constant}:\hat{x} = x^* + \log(\sum_i\exp(\tilde{x}_i-x^*))$$
+
+$$\text{5. Posterior probability}: \exp( \tilde{x}_i-\hat{x})$$
+
+```{r}
+lambda <- c(30,40,50)
+prior <- c(1/4, 1/2, 1/4) # represents 40 customers twice as likely
+t <- 2
+n <- 5
+c <- 380
+```
+
+
+```{r,echo=FALSE}
+probs <- as.matrix(posterior_probability(lambda,prior,t,n,c))
+rownames(probs) <- c("30 c/h","40 c/h","50 c/h")
+colnames(probs) <- "Probability"
+
+
+knitr::kable(probs,caption="Posterior probabilities", digits = 8)
+```
+
+
+\pagebreak
+
+# Question 2
+
+Assume you have decided to bet on a horse race, and that you have very little
+knowledge about the competing horses. You consider betting on Little Joe, and you see
+that the odds for this horse are 9 to 1 (i.e. odds against that the horse will win). You
+decide to look up some historical tracks on how Little Joe has performed recently and
+note that he has won in 2 of the last 10 races he competed in. You can assume that these
+races are fairly comparable with respect to the levels of his competitors.
+
+## a)
+
+Using the above as your background information, what are your subjective odds for
+Little Joe?
+
+$$\text{Probability of winning based on historical data}:\frac{2}{10}=0.2$$
+Since odds are measured as against Little Joe winning, we calculate the odds based on losing instead.
+
+$$\text{Probability of losing based on historical data}:1-0.2=0.8$$
+$$\text{Subjective odds for Little Joe not winning} = \frac{P(A)}{P(\bar{A})}=\frac{0.8}{0.2}=4$$
+
+## b)
+
+If you bet, you will obtain 9 times the money you have put in the bet. What is your
+subjective expected return from betting on Little Joe?
+
+$$\mathbb{E}[Return] = P(Win) \cdot \text{Profit if win} \ - P(Lose) \cdot \text{Loss if lose}$$
+The odds are 9 to 1, meaning betting 100 SEK gives us,
+
+$$\mathbb{E}[Return] = 0.2 \cdot (9 \cdot 100) \ - 0.8 \cdot (1 \cdot 100) = 100$$
+Your expected return when betting 100 SEK is 100 SEK, which means for every 100 SEK you bet you expect to gain 100 SEK if repeated enough times. This results in a favorable bet!
+

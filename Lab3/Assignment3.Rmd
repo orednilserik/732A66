@@ -1,0 +1,157 @@
+---
+title: "Assignment 3"
+author: "Mikael Montén"
+date: '`r Sys.Date()`'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(kableExtra)
+```
+
+*Prerequisities and facts*
+
+* You will travel from City A to Airport B for catching a flight on a specific day
+* You need to be at Airport B at latest 9:30 a.m. to not miss the flight
+* You can choose between taking the train or going by car (no other means of conveyance)
+* The train journey takes 3 hours according to the schedule. It departs from City A at 6 a.m. (and arrives at Airport B at 9 a.m. if on schedule)
+* Going by car takes approximately 2 hours (assume it to be exactly 2 hours for simplicity), but you need to add 15 minutes for parking your car. The car is available from 6 a.m.
+* The train ticket costs 50 €
+* The total cost for using the car (parking included) is 70 €
+
+*Potential obstacles and costs; assumptions and assigned prior probabilities*
+
+* The probability that the train is delayed by x minutes is $(45-x) \cdot 0.001$
+* It can be assumed that the train will not derail or break down
+* The additional cost from missing your flight is 300 €
+* The probability of encountering an unexpected traffic incident/jam that delays your journey by y minutes is $(90-y) \cdot 0.0002$ conditional on that the car is not involved in an accident
+* It can be assumed that the car will not break down
+* The probability of the car (and you) being involved in an accident is 0.01
+* If the car is involved in an accident you will not catch your flight
+* If the car is involved in an accident there is a probability of 0.4 that you will be injured in such a way that medical care is needed
+* If the car is involved in an accident there is a probability of 0.1 that you will be injured in such a way that you will be hospitalised or even die
+
+*Questions to be answered and dwelled on*
+
+* Which are the actions, states of nature and consequences?
+
+```{r, echo = FALSE}
+dec_mat <- matrix(c(-50,0,-350,0,0,"-70+c",0,"-370+c",0,"-370-i"),2,5)
+dimnames(dec_mat) <- list(c("Train", "Car"), 
+                          c("Train on time", "Train miss flight", "Car on time", "Car miss flight", "Accident"))
+knitr::kable(dec_mat, caption = "Decision matrix of actions and states of nature with associated costs") %>% add_header_above(c("Actions" = 1, "States of nature" = 5))
+```
+
+The above matrix shows the actions of taking either the train or car and the related costs to each of the states of nature, which are the potential consequences as they represent the measurable outcomes of each action. The consequences are transportation costs and costs of missing the flight, with additional conditionals as the probabilities of being delayed beyond the critical limit to miss the flight. 
+
+Non-defined variable $i$ represents the cost of the injury from a traffic accident which might require medical care, hospitalization, or death. In this sense, $i = [0,\infty]$ as I consider death to be immeasurable in a context of consequence (since I won't really experience the consequence, being dead and all), but also medical care and hospitalization cost measurement to be hard to define a priori.
+
+The non-defined variable $c$ represents the comfort of taking the car instead of the train. I would appreciate the fact that the car is a faster means of transportation which gives me 30 additional minutes in the morning to sleep in, and the fact that I don't have to carry my luggage and the trip to the airport is more on my terms.
+
+The train has a 30 minute window where it may be delayed without affecting if the flight is missed or not due to the 3h ride which starts at 6 am and having to be at the airport at latest 9.30 am. Since the car has a 2h 15m effective ride, I would be in the car no later than 6.30 am. This leaves a window of 45 minutes where it may be delayed in a traffic jam without affecting if the flight is missed or not.
+
+The probabilities for each state are the following
+
+```{r}
+train_delay <- c()
+for(x in 0:45){
+  train_delay[x+1] <- (45-x) * 0.001
+}
+
+car_traffic <- c()
+for(y in 0:90){
+  car_traffic[y+1] <- (90-y) * 0.0002
+}
+
+# normalize so it sums to 1 and can be considered probabilities
+train_delay <- train_delay/sum(train_delay)
+car_traffic <- car_traffic/sum(car_traffic)
+
+# probabilities of catching the flight within the 30 min delay window or missing
+train_ontime <- sum(train_delay[1:30])
+train_missed <- sum(train_delay[31:46])
+
+# probabilities of catching flight within 45 min window, missing due to traffic, or accident
+car_accident <- 0.01
+car_ontime <- sum(car_traffic[1:45]) * (1-car_accident)
+car_missed <- sum(car_traffic[46:91]) * (1-car_accident)
+
+probs <- rbind(train_ontime, train_missed, car_ontime, car_missed, car_accident)
+```
+
+```{r, echo = FALSE}
+dimnames(probs) <- list(c("Train, catch flight", "Train, miss flight", "Car, catch flight", "Car, miss flight traffic", "Car, miss flight accident"), "Probability")
+```
+
+
+* Is it possible to view (model) this as one single decision problem? Why (not)?
+
+Yes it could be modeled as a single decision problem. From the above constructed matrix and probabilities, we have a set of alternative decisions to choose from and know all different actions that are available. Additionally, we know the states of nature that might influence each chosen action and the outcomes related. Since we can, from the problem description, also rule out other problems such as the train/car breaking down or derailing, it is a well defined problem according to me.
+
+The potential issue with it not being a single decision problem, is the fact that there is a defined probability of me being involved in an accident and missing the flight. There are also probabilities and costs associated with the injury I might sustain in the form of light injuries to needing on-site medical care to needing hospitalization or dying. These costs which are undefined would, if defined, result in a higher cost than cost of using the car and missed flight would be. This could beg the question of if it's even a possibility to use the car - would you potentially risk your life to go to the airport? For me, this is a risk that I am obviously aware of when using my car, but it is not something that I consider or let influence my decisions whether I should use it or not. That is why I consider this to be a single decision problem but still including the accident variable as it concretely alters the probability of catching the flight when it is defined.
+
+The comfort factor that is included in the decision matrix above is not a deciding factor and thus will not alter the amounts of decision per se, only altering the value of the expected consequence.
+
+* What decision problem could you define for which it is possible to use the EU-criterion (maximising the expected utility or minimising the expected loss)? This could be a subordinate decision problem. 
+
+I consider this a single decision problem where the probability of the accident is included in the calculations as a decrease of probability to miss my flight, but since I can't put a defined price on the comfort factor of using the car, this is a EU-criterion for maximizing the utility.
+
+For the altered probability of catching the flight with the car, the probabilities of missing it due to traffic jam and due to accident are summed.
+
+```{r}
+probs <- rbind(train_ontime, train_missed, car_ontime, car_missed+car_accident)
+```
+
+```{r, echo = FALSE}
+dimnames(probs) <- list(c("Train, catch flight", "Train, miss flight", "Car, catch flight", "Car, miss flight"), "Probability")
+knitr::kable(probs, caption = "Adjusted probabilities of states of nature")
+```
+
+In the decision matrix, the Accident state is subsequently removed. For the comfort factor, I consider it to be a 50% reduction in price of taking the car, which lowers the price of using it from 70 to 35. To reflect this, I simply add the perceived value of the comfort factor to the car to the decision matrix values.
+
+```{r}
+dec_mat <- matrix(c(-50,0,-350,0,0,-70+35,0,-370+35),2,4)
+```
+
+
+```{r, echo = FALSE}
+dimnames(dec_mat) <- list(c("Train", "Car"), 
+                          c("Train on time", "Train miss flight", "Car on time", "Car miss flight"))
+knitr::kable(dec_mat, caption = "Adjusted decision matrix") %>% add_header_above(c("Actions" = 1, "States of nature" = 4))
+```
+
+
+
+Expected Utility formula is as follows,
+
+$$EU(a) = \sum U(a,\theta) \cdot  P(\theta)$$
+
+where,
+
+* $\theta$ are states of nature
+
+* $a$ are available actions
+
+* $P(\theta)$ are probabilities for each state
+
+* $U(a,\theta)$ are utilities for each action-state combination
+
+Based on this, calculate EU for each action,
+
+
+```{r}
+costs <- matrix(c(dec_mat[1] * probs[1]+dec_mat[3] * probs[2],
+                    dec_mat[6] * probs[3]+dec_mat[8] * probs[4]))
+```
+
+```{r, echo = FALSE}
+dimnames(costs) <- list("Action" = c("Train", "Car"), 
+                          "Expected utility")
+knitr::kable(costs, caption = "Calculated EU-criterion for available actions")
+```
+
+According to these calculations, taking the train is still the optimal choice between these actions. This despite me not considering the accidents that could happen in a car, and giving it the comfort factor.
