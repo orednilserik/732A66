@@ -10,7 +10,7 @@
 - Utility functions
 
 ### Lab 3
-- Reasoning regarding ubjective actions, states of nature and consequence
+- Reasoning regarding subjective actions, states of nature and consequence
 - Single decision problem
 
 ### Lab 4
